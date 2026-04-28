@@ -10,6 +10,17 @@ library(dplyr)
 library(patchwork) # Necessário para o inset_element() e plot_layout()
 library(geobr)
 library(htmltools)
+library(arrow)
+######### RODR
+
+linkage_sim_sinasc <- read_parquet("dadosR/base_processada.parquet")
+
+
+#### arquivos espaciais
+bairros_2022.sf <- read_sf('dadosR/bases_territoriais_2022.gpkg', layer = 'bairros')
+ap_2022.sf <- read_sf('dadosR/bases_territoriais_2022.gpkg', layer = 'ap')
+
+
 
 # 1. OBTER O MAPA DOS BAIRROS DO RIO DE JANEIRO
 # Vamos baixar os bairros do estado do RJ e filtrar apenas o município do Rio
@@ -32,6 +43,7 @@ select(codbairro, bairro, ids)
 # --- 3. PREPARAÇÃO DOS DADOS ---
 
 # 1. Definindo as suas quebras
+
 quebras_ids <- c(0.4, 0.5, 0.6, 0.7, 0.8, 1)
 
 # 2. Preparando os dados para o gráfico de barras
