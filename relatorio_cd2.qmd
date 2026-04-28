@@ -34,22 +34,43 @@ theme_set(theme_minimal())
 
 ```
 
-
-
 ```{r}
 
 
 linkage_sim_sinasc <- read_parquet("dadosR/base_processada.parquet")
 
+colnames(linkage_sim_sinasc) <- c("ob_inf_sn", "fetarmae", "racacormae", "escmae", "estcivmae", "ini_pre_sn", "consultas", "gestacao", "gravidez", "parto", "peso_g", "asfixia_sn", "ameaca_sn", "bairro", "ap")
 
 #### arquivos espaciais
 bairros_2022.sf <- read_sf('dadosR/bases_territoriais_2022.gpkg', layer = 'bairros')
+bairros_2022.sf <- st_transform(bairros_2022.sf, "+proj=longlat +ellps=WGS84 +datum=WGS84")
 ap_2022.sf <- read_sf('dadosR/bases_territoriais_2022.gpkg', layer = 'ap')
-
+ap_2022.sf <- st_transform(ap_2022.sf, "+proj=longlat +ellps=WGS84 +datum=WGS84")
 
 ```
 
+```{r}
 
+# Selecionando variáveis de interesse e formatando para a tabela
+tabela_ap <- linkage_sim_sinasc |> 
+  select(ap, racacormae, escmae, estcivmae, ini_pre_sn, 
+         consultas, gestacao, parto, peso_g, asfixia_sn, ob_inf_sn) |> 
+  # Opcional: Converter variáveis para fatores com labels mais amigáveis se necessário
+  mutate(ob_inf_sn = ifelse(ob_inf_sn == 1, "Sim", "Não")) |> 
+  tbl_summary(
+    by = ap,
+    statistic = list(all_continuous() ~ "{median} ({p25}, {p75})",
+                     all_categorical() ~ "{n} ({p}%)"),
+    missing_text = "Ignorado/Não preenchido"
+  ) |> 
+  add_overall() |> 
+  add_p() |> # Adiciona teste de hipótese para comparar as APs
+  bold_labels()
+
+# Exibindo a tabela
+tabela_ap
+
+```
 
 ## Quarto
 
