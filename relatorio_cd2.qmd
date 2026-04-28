@@ -1,0 +1,73 @@
+---
+title: "Análise Exploratória e Espacial da Mortalidade Infantil em 2022/2023"
+subtitle: "Escola Nacional de Saúde Pública (ENSP/FIOCRUZ), programa de pós graduação em Epidemiologia em Saúde Pública, disciplina de Ciência de Dados II"
+author: "Felipe Vommaro"
+date: today
+format: 
+  html:
+    theme: cosmo
+    toc: true
+    toc-title: "Índice"
+    code-fold: true
+    embed-resources: true
+execute:
+  warning: false
+  message: false
+---
+
+```{r}
+
+#| label: setup
+#| include: false
+
+# Carregando os pacotes necessários
+library(tidyverse)
+library(arrow)
+library(sf)
+library(gtsummary)
+library(ggiraph)
+library(viridis)
+
+# Definindo tema padrão para os gráficos
+theme_set(theme_minimal())
+
+
+```
+
+
+
+```{r}
+
+
+linkage_sim_sinasc <- read_parquet("dadosR/base_processada.parquet")
+
+
+#### arquivos espaciais
+bairros_2022.sf <- read_sf('dadosR/bases_territoriais_2022.gpkg', layer = 'bairros')
+ap_2022.sf <- read_sf('dadosR/bases_territoriais_2022.gpkg', layer = 'ap')
+
+
+```
+
+
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+1 + 1
+```
+
+You can add options to executable code like this
+
+```{r}
+#| echo: false
+2 * 2
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
