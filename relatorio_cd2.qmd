@@ -72,6 +72,68 @@ tabela_ap
 
 ```
 
+#\| label: mapa-interativo #\| fig-cap: "Distribuição Espacial dos Óbitos Infantis por Bairro"
+
+```{r}
+
+# 1. Agregando os dados por bairro
+# Considerando que ob_inf_sn é 1 para óbito e 0 para sobrevivência
+obitos_por_bairro <- dados_linkage |> 
+  group_by(BAIRRO) |> 
+  summarise(
+    total_nascimentos = n(),
+    total_obitos = sum(ob_inf_sn == 1, na.rm = TRUE),
+    .groups = 'drop'
+  ) |> 
+  # Criando um tooltip (texto que aparece ao passar o mouse) em HTML
+  mutate(
+    tooltip_text = paste0(
+      "<b>Bairro:</b> ", BAIRRO, "<br>",
+      "<b>Total Nascimentos:</b> ", total_nascimentos, "<br>",
+      "<b>Óbitos Infantis:</b> ", total_obitos
+    )
+  )
+
+# 2. Join com a malha espacial (Atenção: garanta que a grafia dos bairros seja igual em ambos)
+mapa_dados <- malha_bairros |> 
+  left_join(obitos_por_bairro, by = c("nome_bairro_malha" = "BAIRRO")) 
+
+# 3. Construindo o mapa com ggplot2 + geom_sf_interactive
+mapa_base <- ggplot(data = mapa_dados) +
+  geom_sf_interactive(
+    aes(
+      fill = total_obitos, 
+      tooltip = tooltip_text, 
+      data_id = BAIRRO # Necessário para o hover funcionar corretamente
+    ),
+    color = "white", # Borda dos bairros
+    linewidth = 0.2
+  ) +
+  scale_fill_viridis(
+    option = "magma", 
+    direction = -1, 
+    name = "Nº de Óbitos",
+    na.value = "grey90"
+  ) +
+  labs(
+    title = "Óbitos Infantis no Município",
+    subtitle = "Passe o mouse sobre os bairros para ver os detalhes"
+  ) +
+  theme_void() +
+  theme(legend.position = "bottom")
+
+# 4. Renderizando o mapa interativo
+girafe(
+  ggobj = mapa_base,
+  options = list(
+    opts_hover(css = "fill:cyan;stroke:black;stroke-width:1px;"),
+    opts_tooltip(css = "background-color:white;color:black;padding:5px;border-radius:5px;"),
+    opts_zoom(max = 3) # Permite dar zoom no mapa
+  )
+)
+
+```
+
 ## Quarto
 
 Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
