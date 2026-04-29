@@ -77,26 +77,41 @@ tabela_ap
 ```{r}
 
 # 1. Agregando os dados por bairro
+linkage_sim_sinasc <- linkage_sim_sinasc %>% 
+  mutate(bairro = case_match(bairro,
+    "OSWALDO CRUZ" ~ "OSVALDO CRUZ",
+    "COMPLEXO DA MARE" ~ "MARE",
+    "CAVALCANTE" ~ "CAVALCANTI",
+    "RICARDO ALBUQUERQUE" ~ "RICARDO DE ALBUQUERQUE",
+    "RECREIO BANDEIRANTES" ~ "RECREIO DOS BANDEIRANTES",
+    "FREGUESIA-ILHA" ~ "FREGUESIA",
+    "FREGUESIA-JPA" ~ "FREGUESIA (JACAREPAGUA)",
+    .default = bairro # Mantém os outros nomes como estão
+  ))
+
+
 # Considerando que ob_inf_sn é 1 para óbito e 0 para sobrevivência
-obitos_por_bairro <- dados_linkage |> 
-  group_by(BAIRRO) |> 
+obitos_por_bairro <- linkage_sim_sinasc |> 
+  group_by(bairro) |> 
   summarise(
     total_nascimentos = n(),
-    total_obitos = sum(ob_inf_sn == 1, na.rm = TRUE),
+    total_obitos = sum(ob_inf_sn == "Sim", na.rm = TRUE),
     .groups = 'drop'
   ) |> 
   # Criando um tooltip (texto que aparece ao passar o mouse) em HTML
   mutate(
     tooltip_text = paste0(
-      "<b>Bairro:</b> ", BAIRRO, "<br>",
+      "<b>Bairro:</b> ", bairro, "<br>",
       "<b>Total Nascimentos:</b> ", total_nascimentos, "<br>",
       "<b>Óbitos Infantis:</b> ", total_obitos
     )
   )
 
 # 2. Join com a malha espacial (Atenção: garanta que a grafia dos bairros seja igual em ambos)
-mapa_dados <- malha_bairros |> 
-  left_join(obitos_por_bairro, by = c("nome_bairro_malha" = "BAIRRO")) 
+mapa_dados <- bairros_2022.sf |> 
+  left_join(obitos_por_bairro, by = c("BAIRR_S_AC" = "bairro")) 
+
+quebras_obitos <- c(0, 1, 5, 10, 50, 100, 5000)
 
 # 3. Construindo o mapa com ggplot2 + geom_sf_interactive
 mapa_base <- ggplot(data = mapa_dados) +
@@ -104,19 +119,20 @@ mapa_base <- ggplot(data = mapa_dados) +
     aes(
       fill = total_obitos, 
       tooltip = tooltip_text, 
-      data_id = BAIRRO # Necessário para o hover funcionar corretamente
+      data_id = BAIRR_S_AC # Necessário para o hover funcionar corretamente
     ),
-    color = "white", # Borda dos bairros
+    color = "grey90", # Borda dos bairros
     linewidth = 0.2
   ) +
   scale_fill_viridis(
-    option = "magma", 
+    option = "viridis", 
     direction = -1, 
     name = "Nº de Óbitos",
-    na.value = "grey90"
+    breaks = quebras_obitos,
+    na.value = "grey70"
   ) +
   labs(
-    title = "Óbitos Infantis no Município",
+    title = "Óbitos de menores de 1 ano (2022-2023)",
     subtitle = "Passe o mouse sobre os bairros para ver os detalhes"
   ) +
   theme_void() +
@@ -133,6 +149,36 @@ girafe(
 )
 
 ```
+
+
+```{r}
+# OUTROS TIPOS DE MAPA? 
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## Quarto
 
