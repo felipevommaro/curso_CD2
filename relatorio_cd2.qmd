@@ -1,6 +1,6 @@
 ---
-title: "Análise Exploratória e Espacial da Mortalidade Infantil em 2022/2023"
-subtitle: "Escola Nacional de Saúde Pública (ENSP/FIOCRUZ), programa de pós graduação em Epidemiologia em Saúde Pública, disciplina de Ciência de Dados II"
+title: "Análise Exploratória e Espacial da Mortalidade Infantil (2022-2023)"
+subtitle: "Escola Nacional de Saúde Pública (ENSP/FIOCRUZ) - Programa de Pós-Graduação em Epidemiologia em Saúde Pública"
 author: "Felipe Vommaro"
 date: today
 format: 
@@ -8,6 +8,9 @@ format:
     theme: cosmo
     toc: true
     toc-title: "Índice"
+    toc-location: left
+    number-sections: true
+    smooth-scroll: true
     code-fold: true
     embed-resources: true
 execute:
@@ -15,42 +18,75 @@ execute:
   message: false
 ---
 
+
+## Introdução
+
+A mortalidade infantil é um dos indicadores mais sensíveis para avaliar as condições de vida, a qualidade da assistência à saúde materno-infantil e o nível de desenvolvimento socioeconômico de uma população. No município do Rio de Janeiro, a forte heterogeneidade territorial impõe a necessidade de análises que incorporem o componente espacial para a identificação de áreas de maior vulnerabilidade.
+
+O cruzamento de bases de dados através do *linkage* entre o Sistema de Informações sobre Mortalidade (SIM) e o Sistema de Informações sobre Nascidos Vivos (SINASC), permitiu a análise integrada de determinantes distais (características socioeconômicas maternas) e proximais (condições de gestação e parto) que culminam no desfecho do óbito.
+
+O presente relatório tem como objetivo apresentar uma análise exploratória e espacial da mortalidade infantil no município do Rio de Janeiro no biênio 2022-2023, considerando a análise sob a ótica territorial de bairros e áreas programáticas (AP).
+
+## Metodologia
+
+Trata-se de um estudo ecológico e descritivo. Os dados foram extraídos do *linkage* SIM-SINASC, no qual foi utilizada uma base pré processada, selecionando-se variáveis de interesse para o estudo, anonimizadas e sem informação de endereço, de modo a inviabilizar a identificação nominal e espacial dos indivíduos. As análises foram agregadas por Áreas de Planejamento (AP) e Bairros do município do Rio de Janeiro. 
+
+Para a análise descritiva, as características maternas, de gestação e do recém-nascido foram sumarizadas e estratificadas por AP. Para a análise espacial, calculou-se a **Taxa de Mortalidade Infantil (TMI)**, expressa por 1.000 nascidos vivos (NV). 
+
+As proporções de fatores de risco (tais como escolaridade materna e adequação do pré-natal) foram calculadas excluindo-se as categorias "Ignorada" dos denominadores. As análises foram realizadas no software R, utilizando os pacotes `tidyverse` para manipulação de dados, `sf` para o tratamento das malhas territoriais, `gtsummary` para a sumarização estatística e `ggiraph` para a construção da cartografia interativa.
+
+A base de dados processada e os arquivos espaciais utilizados estão disponíveis no repositório do GitHub: [https://github.com/felipevommaro/curso_CD2.git] 
+
+
 ```{r}
 
 #| label: setup
 #| include: false
 
-# Carregando os pacotes necessários
+# bibliotecas necessárias
 library(tidyverse)
 library(arrow)
 library(sf)
 library(gtsummary)
 library(ggiraph)
 library(viridis)
+library(scales)
 
-# Definindo tema padrão para os gráficos
+# tema padrão para os gráficos
 theme_set(theme_minimal())
 
 
 ```
 
+
 ```{r}
 
-
+### leitura do banco do linkage
 linkage_sim_sinasc <- read_parquet("dadosR/base_processada.parquet")
 
+### Padronização dos nomes das colunas
 colnames(linkage_sim_sinasc) <- c("ob_inf_sn", "fetarmae", "racacormae", "escmae", "estcivmae", "ini_pre_sn", "consultas", "gestacao", "gravidez", "parto", "peso_g", "asfixia_sn", "ameaca_sn", "bairro", "ap")
 
-#### arquivos espaciais
+### arquivos espaciais
 bairros_2022.sf <- read_sf('dadosR/bases_territoriais_2022.gpkg', layer = 'bairros')
 bairros_2022.sf <- st_transform(bairros_2022.sf, "+proj=longlat +ellps=WGS84 +datum=WGS84")
+
 ap_2022.sf <- read_sf('dadosR/bases_territoriais_2022.gpkg', layer = 'ap')
 ap_2022.sf <- st_transform(ap_2022.sf, "+proj=longlat +ellps=WGS84 +datum=WGS84")
 
 ```
 
+
+## Resultados
+
+### Perfil Epidemiológico e Sociodemográfico
+
+A tabela abaixo apresenta a caracterização da coorte de nascidos vivos pareados, estratificada pelas Áreas de Planejamento (AP) da cidade. É possível observar assimetrias importantes na distribuição de fatores protetivos e de risco. Áreas historicamente mais vulneráveis apresentam maiores proporções de mães não brancas, menor escolaridade e maior incidência de pré-natal inadequado, refletindo diretamente nas proporções do desfecho.
+
 ```{r}
 
+#| label: tabela-descritiva
+#| tbl-cap: "Características sociodemográficas e clínicas materno-infantis, estratificadas por Área de Planejamento (AP). Rio de Janeiro, 2022-2023."
 # Selecionando variáveis de interesse e formatando para a tabela
 tabela_ap <- linkage_sim_sinasc |> 
   select(ap, racacormae, escmae, estcivmae, ini_pre_sn, 
@@ -72,9 +108,16 @@ tabela_ap
 
 ```
 
+### Distribuição Espacial da Taxa de Mortalidade Infantil (TMI)
+
+
+
 #\| label: mapa-interativo #\| fig-cap: "Distribuição Espacial dos Óbitos Infantis por Bairro"
 
 ```{r}
+
+#| label: mapa-interativo
+#| fig-cap: "Contagem de óbitos infantis por bairro no município do Rio de Janeiro"
 
 # 1. Agregando os dados por bairro
 linkage_sim_sinasc <- linkage_sim_sinasc %>% 
@@ -111,7 +154,7 @@ obitos_por_bairro <- linkage_sim_sinasc |>
 mapa_dados <- bairros_2022.sf |> 
   left_join(obitos_por_bairro, by = c("BAIRR_S_AC" = "bairro")) 
 
-quebras_obitos <- c(0, 1, 5, 10, 50, 100, 5000)
+quebras_obitos <- c(0, 1, 10, 50, 100, 200)
 
 # 3. Construindo o mapa com ggplot2 + geom_sf_interactive
 mapa_base <- ggplot(data = mapa_dados) +
@@ -124,79 +167,193 @@ mapa_base <- ggplot(data = mapa_dados) +
     color = "grey90", # Borda dos bairros
     linewidth = 0.2
   ) +
-  scale_fill_viridis(
+  scale_fill_viridis_b(
     option = "viridis", 
-    direction = -1, 
+    direction = 1, 
     name = "Nº de Óbitos",
     breaks = quebras_obitos,
-    na.value = "grey70"
+    limits = c(0, 5000),      # Força o respeito absoluto às suas quebras
+    oob = scales::squish,     # Lida com valores que possam escapar dos limites
+    na.value = "grey70",
+    labels = comma_format(decimal.mark = ",", accuracy = 0.1),
+    # AJUSTE 1: Transforma a legenda em uma barra vertical elegante
+    guide = guide_colorsteps(
+      barheight = unit(6, "cm"), # Altura da barra
+      barwidth = unit(0.5, "cm"), # Largura da barra
+      show.limits = TRUE         # Mostra os valores mínimo (0) e máximo (5000) nas pontas
+    )
   ) +
   labs(
     title = "Óbitos de menores de 1 ano (2022-2023)",
     subtitle = "Passe o mouse sobre os bairros para ver os detalhes"
   ) +
   theme_void() +
-  theme(legend.position = "bottom")
+  # AJUSTE 2: Move a legenda para a lateral direita
+  theme(legend.position = "right")
 
 # 4. Renderizando o mapa interativo
 girafe(
   ggobj = mapa_base,
+  width_svg = 8,
+  height_svg = 6,
   options = list(
-    opts_hover(css = "fill:cyan;stroke:black;stroke-width:1px;"),
-    opts_tooltip(css = "background-color:white;color:black;padding:5px;border-radius:5px;"),
-    opts_zoom(max = 3) # Permite dar zoom no mapa
+    opts_hover(css = "fill:#ffd700; stroke:#333; stroke-width:2px; cursor:pointer;"),
+    opts_tooltip(
+      css = "background-color:#ffffff; color:#333333; border-radius:5px; box-shadow: 2px 2px 8px rgba(0,0,0,0.3);",
+      opacity = 0.95
+    ),
+    opts_zoom(max = 3) # Permite dar zoom
   )
 )
 
+
 ```
+
+Para compreender a dinâmica territorial do óbito infantil, agregou-se a base em nível de Áreas de Planejamento. O mapa interativo a seguir ilustra a distribuição da Taxa de Mortalidade Infantil. 
+
+**Instruções de uso:** Passe o mouse sobre as regiões do mapa para acionar o *dashboard* flutuante. O painel revela, além da TMI e do número absoluto de óbitos, uma teia de determinantes sociais e clínicos associados àquele território, como a proporção de prematuridade extrema (< 32 semanas), muito baixo peso ao nascer (< 1500g) e acesso deficiente ao pré-natal (< 4 consultas).
 
 
 ```{r}
-# OUTROS TIPOS DE MAPA? 
+
+
+#| label: mapa-interativo
+#| fig-cap: "Taxa de Mortalidade Infantil e seus determinantes por Área de Planejamento. Município do Rio de Janeiro (2022-2023)."
+
+# 1. Agregação e Cálculo dos Indicadores por AP
+dados_ap <- linkage_sim_sinasc |>
+  group_by(ap) |>
+  summarise(
+    # Desfecho
+    total_nasc = n(),
+    total_obitos = sum(ob_inf_sn == "Sim", na.rm = TRUE),
+    tmi = (total_obitos / total_nasc) * 1000,
+    
+    # Marcadores Sociais e de Acesso
+    den_raca = sum(!racacormae %in% c("Ignorada", NA), na.rm = TRUE),
+    prop_nao_branca = sum(racacormae %in% c("Preta", "Parda", "Amarela", "Indigena"), na.rm = TRUE) / den_raca,
+    
+    den_esc = sum(!escmae %in% c("Ignorada", NA), na.rm = TRUE),
+    prop_esc_ate3 = sum(escmae == "Até 3 anos", na.rm = TRUE) / den_esc,
+    
+    den_cons = sum(!consultas %in% c("Ignorado", NA), na.rm = TRUE),
+    prop_menos4_cons = sum(consultas %in% c("Nenhuma", "1-3"), na.rm = TRUE) / den_cons,
+    
+    # Desfechos Intermediários / Clínicos
+    den_gest = sum(!gestacao %in% c("Ignorada", NA), na.rm = TRUE),
+    prop_gest_menor32 = sum(gestacao %in% c("< 28 semanas", "28-31 semanas"), na.rm = TRUE) / den_gest,
+    
+    den_peso = sum(!is.na(peso_g), na.rm = TRUE),
+    prop_peso_menor1500 = sum(peso_g == "< 1.500", na.rm = TRUE) / den_peso,
+    
+    den_asfixia = sum(!is.na(asfixia_sn), na.rm = TRUE),
+    prop_asfixia = sum(asfixia_sn == "Sim", na.rm = TRUE) / den_asfixia,
+    
+    .groups = "drop"
+  )
+
+
+# 2. Criando o Tooltip HTML (Mini-dashboard)
+dados_ap <- dados_ap |>
+  mutate(
+    tooltip_html = sprintf(
+      "<div style='font-family: Helvetica, Arial, sans-serif; padding: 10px; min-width: 210px;'>
+         <h4 style='margin-top: 0; margin-bottom: 8px; color: #333; border-bottom: 1px solid #ccc;'>AP: %s</h4>
+         <b style='color: #d95f02;'>Óbitos Infantis:</b> %d<br>
+         <b style='color: #d95f02;'>TMI:</b> %.1f <span style='font-size:10px;'>(por mil NV)</span><br>
+         <hr style='margin: 8px 0; border: 0; border-top: 1px dashed #ccc;'>
+         <div style='font-size: 13px; line-height: 1.4;'>
+           <b>Mães Não Brancas:</b> %s<br>
+           <b>Escolaridade (≤ 3 anos):</b> %s<br>
+           <b>Pré-natal Inadequado (< 4 cons):</b> %s<br>
+           <b>Prematuridade (< 32 sem):</b> %s<br>
+           <b>Baixo Peso (< 1500g):</b> %s<br>
+           <b>Asfixia:</b> %s
+         </div>
+       </div>",
+      ap, total_obitos, tmi, 
+      percent(prop_nao_branca, accuracy = 0.1), 
+      percent(prop_esc_ate3, accuracy = 0.1), 
+      percent(prop_menos4_cons, accuracy = 0.1), 
+      percent(prop_gest_menor32, accuracy = 0.1), 
+      percent(prop_peso_menor1500, accuracy = 0.1),
+      percent(prop_asfixia, accuracy = 0.1)
+    )
+  )
+
+# 3. Join Espacial
+mapa_ap_dados <- ap_2022.sf |> 
+  left_join(dados_ap, by = c("COD_CAP" = "ap"))
 
 ```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## Quarto
-
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
-
-## Running Code
-
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+Construindo o mapa interativo por AP:
 
 ```{r}
-1 + 1
+
+# breaks
+quebras_tmi <- c(0, 5, 10, 12, 14, 15)
+
+
+# 4. Construindo o mapa estático com geom_sf_interactive
+mapa_base <- ggplot(data = mapa_ap_dados) +
+  geom_sf_interactive(
+    aes(
+      fill = tmi, 
+      tooltip = tooltip_html, 
+      data_id = COD_CAP 
+    ),
+    color = "white",
+    linewidth = 0.4
+  ) +
+  scale_fill_viridis_b(
+    option = "viridis", 
+    direction = -1, 
+    name = "TMI\n(por mil NV)",
+    breaks = quebras_tmi,
+    limits = c(0, 15), 
+    oob = scales::squish,      
+    labels = comma_format(decimal.mark = ",", accuracy = 0.1)
+  ) +
+  theme_void() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+    plot.subtitle = element_text(size = 11, hjust = 0.5, color = "grey40")
+  ) +
+  labs(
+    title = "Taxa de Mortalidade Infantil no Rio de Janeiro",
+    subtitle = "Interaja com os polígonos para visualizar as métricas do território"
+  )
+
+# 5. Renderização
+girafe(
+  ggobj = mapa_base,
+  width_svg = 8,
+  height_svg = 6,
+  options = list(
+    opts_hover(css = "fill:#ffd700; stroke:#333; stroke-width:2px; cursor:pointer;"),
+    opts_tooltip(
+      css = "background-color:#ffffff; color:#333333; border-radius:5px; box-shadow: 2px 2px 8px rgba(0,0,0,0.3);",
+      opacity = 0.95
+    ),
+    opts_zoom(max = 3)
+  )
+)
+
+
 ```
 
-You can add options to executable code like this
+## Conclusão
 
-```{r}
-#| echo: false
-2 * 2
-```
+A visualização espacial aliada ao cruzamento com covariáveis clínicas e demográficas demonstra que a mortalidade infantil não se distribui de maneira homogênea no Rio de Janeiro. A correlação visual entre áreas de maiores taxas de mortalidade (cores mais escuras no mapa) e indicadores alarmantes nos tooltips (como ausência de pré-natal e baixa escolaridade) evidencia a necessidade de políticas públicas de saúde baseadas no território. O fortalecimento da Atenção Primária nas Áreas de Planejamento mais vulneráveis é um passo fundamental para mitigar a mortalidade evitável no município.
 
-The `echo: false` option disables the printing of code (only output is displayed).
+## Referências
+
+Ciência de Dados Aplicada à Epidemiologia II - 2026. Acessado em: https://ogcruz.github.io/curso_ds2/
+
+*Desenvolvido por Felipe Vommaro.*
+
+---
+
+![](barra_procc _ensp.png){fig-align="center" width="100%"}
