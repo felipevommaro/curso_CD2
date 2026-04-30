@@ -1,5 +1,5 @@
 ---
-title: "Análise Exploratória e Espacial da Mortalidade Infantil (2022-2023)"
+title: "![](cabecalho_ensp.png){width=800px fig-align='center'} <br><br> Análise Exploratória e Espacial da Mortalidade Infantil (2022-2023)"
 subtitle: "Escola Nacional de Saúde Pública (ENSP/FIOCRUZ) - Programa de Pós-Graduação em Epidemiologia em Saúde Pública"
 author: "Felipe Vommaro"
 date: today
@@ -21,19 +21,19 @@ execute:
 
 ## Introdução
 
-A mortalidade infantil é um dos indicadores mais sensíveis para avaliar as condições de vida, a qualidade da assistência à saúde materno-infantil e o nível de desenvolvimento socioeconômico de uma população. No município do Rio de Janeiro, a forte heterogeneidade territorial impõe a necessidade de análises que incorporem o componente espacial para a identificação de áreas de maior vulnerabilidade.
+A mortalidade infantil é um problema de saúde pública de alcance global, reconhecida como um dos principais indicadores das condições de vida de uma população e do desempenho dos sistemas de saúde e representa não apenas o desfecho fatal de nascimentos vivos, mas reflete as condições sociais da população e suas vulnerabilidades relacionadas às condições socioeconômicas, da qualidade da assistência e de acesso à saúde (Sousa et al., 2024). No município do Rio de Janeiro, a forte heterogeneidade territorial impõe a necessidade de análises que incorporem o componente espacial para a identificação de áreas de maior vulnerabilidade.
 
 O cruzamento de bases de dados através do *linkage* entre o Sistema de Informações sobre Mortalidade (SIM) e o Sistema de Informações sobre Nascidos Vivos (SINASC), permitiu a análise integrada de determinantes distais (características socioeconômicas maternas) e proximais (condições de gestação e parto) que culminam no desfecho do óbito.
 
 O presente relatório tem como objetivo apresentar uma análise exploratória e espacial da mortalidade infantil no município do Rio de Janeiro no biênio 2022-2023, considerando a análise sob a ótica territorial de bairros e áreas programáticas (AP).
 
-## Metodologia
+## Método
 
 Trata-se de um estudo ecológico e descritivo. Os dados foram extraídos do *linkage* SIM-SINASC, no qual foi utilizada uma base pré processada, selecionando-se variáveis de interesse para o estudo, anonimizadas e sem informação de endereço, de modo a inviabilizar a identificação nominal e espacial dos indivíduos. As análises foram agregadas por Áreas de Planejamento (AP) e Bairros do município do Rio de Janeiro. 
 
 Para a análise descritiva, as características maternas, de gestação e do recém-nascido foram sumarizadas e estratificadas por AP. Para a análise espacial, calculou-se a **Taxa de Mortalidade Infantil (TMI)**, expressa por 1.000 nascidos vivos (NV). 
 
-As proporções de fatores de risco (tais como escolaridade materna e adequação do pré-natal) foram calculadas excluindo-se as categorias "Ignorada" dos denominadores. As análises foram realizadas no software R, utilizando os pacotes `tidyverse` para manipulação de dados, `sf` para o tratamento das malhas territoriais, `gtsummary` para a sumarização estatística e `ggiraph` para a construção da cartografia interativa.
+As proporções de fatores de risco (tais como escolaridade materna e pré-natal adequado) foram calculadas excluindo-se as categorias "Ignorada" dos denominadores. As análises foram realizadas no software R, utilizando os pacotes `tidyverse` para manipulação de dados, `sf` para o tratamento das malhas territoriais, `gtsummary` para a sumarização estatística e `ggiraph` para a construção dos mapas interativos.
 
 A base de dados processada e os arquivos espaciais utilizados estão disponíveis no repositório do GitHub: [https://github.com/felipevommaro/curso_CD2.git] 
 
@@ -43,7 +43,7 @@ A base de dados processada e os arquivos espaciais utilizados estão disponívei
 #| label: setup
 #| include: false
 
-# bibliotecas necessárias
+### bibliotecas necessárias
 library(tidyverse)
 library(arrow)
 library(sf)
@@ -52,7 +52,7 @@ library(ggiraph)
 library(viridis)
 library(scales)
 
-# tema padrão para os gráficos
+#### tema padrão para os gráficos
 theme_set(theme_minimal())
 
 
@@ -71,6 +71,7 @@ colnames(linkage_sim_sinasc) <- c("ob_inf_sn", "fetarmae", "racacormae", "escmae
 bairros_2022.sf <- read_sf('dadosR/bases_territoriais_2022.gpkg', layer = 'bairros')
 bairros_2022.sf <- st_transform(bairros_2022.sf, "+proj=longlat +ellps=WGS84 +datum=WGS84")
 
+### acertando o EPSG para ler no leaflet
 ap_2022.sf <- read_sf('dadosR/bases_territoriais_2022.gpkg', layer = 'ap')
 ap_2022.sf <- st_transform(ap_2022.sf, "+proj=longlat +ellps=WGS84 +datum=WGS84")
 
@@ -81,17 +82,18 @@ ap_2022.sf <- st_transform(ap_2022.sf, "+proj=longlat +ellps=WGS84 +datum=WGS84"
 
 ### Perfil Epidemiológico e Sociodemográfico
 
-A tabela abaixo apresenta a caracterização da coorte de nascidos vivos pareados, estratificada pelas Áreas de Planejamento (AP) da cidade. É possível observar assimetrias importantes na distribuição de fatores protetivos e de risco. Áreas historicamente mais vulneráveis apresentam maiores proporções de mães não brancas, menor escolaridade e maior incidência de pré-natal inadequado, refletindo diretamente nas proporções do desfecho.
+A tabela abaixo apresenta a caracterização da coorte produzida a partir do *linkage*, estratificada pelas Áreas de Planejamento (AP) da cidade. Observam-se as assimetrias importantes na distribuição de fatores protetivos e de risco. APs historicamente mais vulneráveis apresentam maiores proporções de mães não brancas, menor escolaridade e maior incidência de pré-natal inadequado, refletindo diretamente nas proporções do desfecho.
 
 ```{r}
 
 #| label: tabela-descritiva
 #| tbl-cap: "Características sociodemográficas e clínicas materno-infantis, estratificadas por Área de Planejamento (AP). Rio de Janeiro, 2022-2023."
-# Selecionando variáveis de interesse e formatando para a tabela
+### Selecionando variáveis de interesse e formatando para a tabela
 tabela_ap <- linkage_sim_sinasc |> 
   select(ap, racacormae, escmae, estcivmae, ini_pre_sn, 
          consultas, gestacao, parto, peso_g, asfixia_sn, ob_inf_sn) |> 
-  # Opcional: Converter variáveis para fatores com labels mais amigáveis se necessário
+  
+### Converter variáveis para fatores com labels legiveis
   mutate(ob_inf_sn = ifelse(ob_inf_sn == 1, "Sim", "Não")) |> 
   tbl_summary(
     by = ap,
@@ -108,18 +110,76 @@ tabela_ap
 
 ```
 
+### Ameaça à vida ao nascer
+
+ A seguir, o gráfico apresenta a proporção de recém-nascidos com registro de ameaça à vida ao nascer, estratificada por Área de Planejamento (AP). A visualização evidencia as disparidades territoriais, com algumas APs apresentando proporções significativamente maiores, demonstrando a heterogeneidade entre áreas do MRJ. A categoria é formada a partir das variáveis originais peso ao nascer < 1.500g ou idade gestacional (IG) ao nascer < 32 semanas ou asfixia (escore de Apgar < 7 no 5º minuto), conforme sugerido por Silva et. al (2024). 
+
+
+```{r}
+
+#| label: grafico-ameaca-vida
+#| fig-cap: "Proporção de recém-nascidos com  Ameaça à Vida por APs."
+#| fig-height: 5
+#| fig-width: 7
+
+#### Preparação dos dados
+dados_ameaca <- linkage_sim_sinasc |>
+  # Filtra apenas os registros válidos para evitar que NAs distorçam a proporção
+  filter(ameaca_sn %in% c("Sim", "Não"), !is.na(ap)) |> 
+  group_by(ap) |>
+  summarise(
+    total = n(),
+    casos_sim = sum(ameaca_sn == "Sim", na.rm = TRUE),
+    prop_ameaca = casos_sim / total,
+    .groups = "drop"
+  )
+
+### Construção do Grafico
+ggplot(dados_ameaca, aes(x = reorder(ap, prop_ameaca), y = prop_ameaca)) +
+  geom_col(fill = "#2c3e50", width = 0.7) + # Barra em um tom de azul escuro e elegante
+  # Adiciona os rótulos de dados (ex: 12,5%) ao lado das barras
+  geom_text(
+    aes(label = percent(prop_ameaca, accuracy = 0.1, decimal.mark = ",")),
+    hjust = -0.2, 
+    size = 3.5, 
+    color = "black"
+  ) +
+### Formata o eixo Y como porcentagem e dá uma "folga" no limite para o texto não cortar
+  scale_y_continuous(
+    labels = percent_format(accuracy = 1, decimal.mark = ","),
+    limits = c(0, max(dados_ameaca$prop_ameaca) * 1.15) 
+  ) +
+  coord_flip() + # Inverte os eixos para criar barras horizontais
+  labs(
+    title = "Casos de Ameaça à Vida ao Nascer",
+    subtitle = "Proporção de registros afirmativos segundo Área Programática",
+    x = "Área progamática (AP)",
+    y = "Proporção (%)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    axis.title.y = element_text(margin = margin(r = 10)),
+    axis.title.x = element_text(margin = margin(t = 10)),
+    panel.grid.major.y = element_blank() # Remove as linhas horizontais de fundo para um visual mais limpo
+  )
+
+```
+
+
+
+
 ### Distribuição Espacial da Taxa de Mortalidade Infantil (TMI)
 
+Nesse mapa interativo, a intensidade da cor representa a quantidade absoluta de óbitos infantis por bairro.  Observa-se uma concentração de óbitos em bairros historicamente mais vulneráveis, como Campo Grande, Santa Cruz e Guaratiba, o que revela apenas o volume de óbitos, não considerando valores proporcionais (TMI).
 
-
-#\| label: mapa-interativo #\| fig-cap: "Distribuição Espacial dos Óbitos Infantis por Bairro"
 
 ```{r}
 
 #| label: mapa-interativo
 #| fig-cap: "Contagem de óbitos infantis por bairro no município do Rio de Janeiro"
 
-# 1. Agregando os dados por bairro
+### Agregando os dados por bairro
 linkage_sim_sinasc <- linkage_sim_sinasc %>% 
   mutate(bairro = case_match(bairro,
     "OSWALDO CRUZ" ~ "OSVALDO CRUZ",
@@ -150,13 +210,14 @@ obitos_por_bairro <- linkage_sim_sinasc |>
     )
   )
 
-# 2. Join com a malha espacial (Atenção: garanta que a grafia dos bairros seja igual em ambos)
+
+###### Join com a malha espacial (Atenção: garanta que a grafia dos bairros seja igual em ambos)
 mapa_dados <- bairros_2022.sf |> 
   left_join(obitos_por_bairro, by = c("BAIRR_S_AC" = "bairro")) 
 
 quebras_obitos <- c(0, 1, 10, 50, 100, 200)
 
-# 3. Construindo o mapa com ggplot2 + geom_sf_interactive
+### Construindo o mapa com ggplot2 + geom_sf_interactive
 mapa_base <- ggplot(data = mapa_dados) +
   geom_sf_interactive(
     aes(
@@ -191,7 +252,7 @@ mapa_base <- ggplot(data = mapa_dados) +
   # AJUSTE 2: Move a legenda para a lateral direita
   theme(legend.position = "right")
 
-# 4. Renderizando o mapa interativo
+###### Renderizando o mapa interativo
 girafe(
   ggobj = mapa_base,
   width_svg = 8,
@@ -220,7 +281,7 @@ Para compreender a dinâmica territorial do óbito infantil, agregou-se a base e
 #| label: mapa-interativo
 #| fig-cap: "Taxa de Mortalidade Infantil e seus determinantes por Área de Planejamento. Município do Rio de Janeiro (2022-2023)."
 
-# 1. Agregação e Cálculo dos Indicadores por AP
+####### Agregação e Cálculo dos Indicadores por AP
 dados_ap <- linkage_sim_sinasc |>
   group_by(ap) |>
   summarise(
@@ -252,8 +313,8 @@ dados_ap <- linkage_sim_sinasc |>
     .groups = "drop"
   )
 
-
-# 2. Criando o Tooltip HTML (Mini-dashboard)
+###########
+### Criando o Tooltip HTML (Mini-dashboard)
 dados_ap <- dados_ap |>
   mutate(
     tooltip_html = sprintf(
@@ -281,13 +342,14 @@ dados_ap <- dados_ap |>
     )
   )
 
-# 3. Join Espacial
+################################################## join espacial para criar o mapa interativo por AP
+
 mapa_ap_dados <- ap_2022.sf |> 
   left_join(dados_ap, by = c("COD_CAP" = "ap"))
 
 ```
 
-Construindo o mapa interativo por AP:
+
 
 ```{r}
 
@@ -295,7 +357,7 @@ Construindo o mapa interativo por AP:
 quebras_tmi <- c(0, 5, 10, 12, 14, 15)
 
 
-# 4. Construindo o mapa estático com geom_sf_interactive
+### Construindo o mapa estático do geom_sf_interactive
 mapa_base <- ggplot(data = mapa_ap_dados) +
   geom_sf_interactive(
     aes(
@@ -307,7 +369,7 @@ mapa_base <- ggplot(data = mapa_ap_dados) +
     linewidth = 0.4
   ) +
   scale_fill_viridis_b(
-    option = "viridis", 
+    option = "YlGnBu", 
     direction = -1, 
     name = "TMI\n(por mil NV)",
     breaks = quebras_tmi,
@@ -326,7 +388,7 @@ mapa_base <- ggplot(data = mapa_ap_dados) +
     subtitle = "Interaja com os polígonos para visualizar as métricas do território"
   )
 
-# 5. Renderização
+##### Renderização
 girafe(
   ggobj = mapa_base,
   width_svg = 8,
@@ -346,11 +408,21 @@ girafe(
 
 ## Conclusão
 
-A visualização espacial aliada ao cruzamento com covariáveis clínicas e demográficas demonstra que a mortalidade infantil não se distribui de maneira homogênea no Rio de Janeiro. A correlação visual entre áreas de maiores taxas de mortalidade (cores mais escuras no mapa) e indicadores alarmantes nos tooltips (como ausência de pré-natal e baixa escolaridade) evidencia a necessidade de políticas públicas de saúde baseadas no território. O fortalecimento da Atenção Primária nas Áreas de Planejamento mais vulneráveis é um passo fundamental para mitigar a mortalidade evitável no município.
+A visualização espacial aliada ao cruzamento com variáveis sociodemográficas presente na base de dados, demonstra que a mortalidade infantil não se distribui de maneira homogênea no Rio de Janeiro. A correlação visual entre áreas de maiores taxas de mortalidade (cores mais escuras no mapa) e indicadores alarmantes nos tooltips (como ausência de pré-natal e baixa escolaridade) evidencia a necessidade de políticas públicas de saúde baseadas no território. O fortalecimento da Atenção Primária nas Áreas de Planejamento mais vulneráveis é um passo fundamental para reduzir a mortalidade evitável em menores de 1 ano no município do Rio de Janeiro.
 
 ## Referências
 
 Ciência de Dados Aplicada à Epidemiologia II - 2026. Acessado em: https://ogcruz.github.io/curso_ds2/
+
+ggplot2 package. Acessado em: https://r-graph-gallery.com/ggplot2-package.html
+
+Make ggplot2 dynamic and interactive with ggiraph. Acessado em: https://r-graph-gallery.com/package/ggiraph.html
+
+SILVA AAM da, Leite ÁJM, Lamy ZC, Moreira MEL, Gurgel RQ, Cunha AJLA da, et al. Morbidade neonatal near miss na pesquisa Nascer no Brasil. Cad Saúde Pública. agosto de 2014;30:S182–91.
+
+SOUSA, A. N. et al. Fatores associados à mortalidade infantil evitável no ano de 2020: estudo brasileiro de base populacional. Revista Brasileira de Enfermagem, v. 77, e20240127, 2024.
+
+
 
 *Desenvolvido por Felipe Vommaro.*
 
